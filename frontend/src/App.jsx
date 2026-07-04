@@ -13,9 +13,7 @@ function App() {
 
   async function fetchConversations() {
     try {
-      const { data } = await axios.get(
-        "http://localhost:3888/api/chat/conversation",
-      );
+      const { data } = await axios.get("API_BASE_URL/chat/conversation");
 
       setConversations(data.data || []);
     } catch (error) {
@@ -41,12 +39,9 @@ function App() {
       setIsLoading(true);
 
       // 2. Send to backend
-      const { data } = await axios.post(
-        "http://localhost:3888/api/chat/conversation",
-        {
-          question: cleanQuestion,
-        },
-      );
+      const { data } = await axios.post("API_BASE_URL/chat/conversation", {
+        question: cleanQuestion,
+      });
 
       const result = data?.data;
 
