@@ -36,12 +36,14 @@ export const getRecentConversationRows = async (limit = 5) => {
   const safeLimit =
     Number.isNaN(normalizedLimit) || normalizedLimit <= 0 ? 5 : normalizedLimit;
 
+  // FIX: mysql2's prepared statements (execute) don't reliably support
+  // placeholders for LIMIT. safeLimit is validated as a clean integer above,
+  // so it's safe to inline directly into the query string.
   const [rows] = await db.execute(
     `SELECT id, role, content, created_at
      FROM conversations
      ORDER BY id DESC
-     LIMIT ?`,
-    [safeLimit],
+     LIMIT ${safeLimit}`,
   );
 
   return rows.reverse();
@@ -160,13 +162,167 @@ export async function createConversationService(question) {
   }
 }
 
+// import db from "../../../../db/dbConfig.js";
+// import { GoogleGenerativeAI } from "@google/generative-ai";
 
+// // Fixed: Changed retired model string to a current, active model
+// const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
+// const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
+// // System instructions initialized globally on the model
+// const model = genAI.getGenerativeModel({
+//   model: GEMINI_MODEL,
+//   systemInstruction: `You are an expert software engineering assistant. Your primary role is to help developers write, debug, and understand code.
 
+// # Core Objectives
+// - Provide accurate, practical, and efficient programming solutions.
+// - Explain technical concepts clearly and concisely.
 
+// # Constraints & Boundaries
+// - STRICTLY limit your answers to software engineering, programming, computer science, and IT-related topics.
+// - If a user asks about non-programming topics (e.g., travel, health, finance, legal, lifestyle), you MUST politely decline and steer the conversation back to programming.
+// - Do not write harmful, malicious, or unethical code.
 
+// # Tone & Style
+// - Be professional, helpful, and direct.
+// - Keep responses concise; avoid unnecessary fluff.
+// - Use Markdown formatting for readability.
+// - Always wrap code snippets in appropriate language-specific code blocks.`,
+// });
 
+// console.log(" CURRENT ACTIVE MODEL BEING USED:", GEMINI_MODEL);
+
+// // Get recent chat history
+// export const getRecentConversationRows = async (limit = 5) => {
+//   const normalizedLimit = Number.parseInt(limit, 10);
+
+//   const safeLimit =
+//     Number.isNaN(normalizedLimit) || normalizedLimit <= 0 ? 5 : normalizedLimit;
+
+//   const [rows] = await db.execute(
+//     `SELECT id, role, content, created_at
+//      FROM conversations
+//      ORDER BY id DESC
+//      LIMIT ?`,
+//     [safeLimit],
+//   );
+
+//   return rows.reverse();
+// };
+
+// // Swapped out startChat for a robust stateless generateContent call
+// const generateAssistantAnswer = async ({ historyRows, question }) => {
+//   try {
+//     // 1. Map existing DB history rows to SDK format
+//     const contents = historyRows.map((row) => ({
+//       role: row.role === "assistant" ? "model" : "user",
+//       parts: [{ text: String(row.content || "") }],
+//     }));
+
+//     // 2. Append the current question right to the end of the history array
+//     contents.push({
+//       role: "user",
+//       parts: [{ text: String(question || "") }],
+//     });
+
+//     // 3. Request the response using the unified contents array
+//     const result = await model.generateContent({
+//       contents: contents,
+//     });
+
+//     const response = await result.response;
+//     const textAnswer = response.text().trim();
+
+//     if (!textAnswer) {
+//       throw new Error("The model returned an empty answer");
+//     }
+
+//     // Dynamic token parsing from metadata
+//     const totalTokens = response.usageMetadata?.totalTokenCount || 0;
+//     console.log(response);
+
+//     return {
+//       text: textAnswer,
+//       totalTokens: totalTokens,
+//     };
+//   } catch (apiError) {
+//     // This console error will now show you the real issue if something else breaks!
+//     console.error(" GEMINI API CRASHED:", apiError);
+//     return {
+//       text: "AI service error. Please try again later.",
+//       totalTokens: 0,
+//     };
+//   }
+// };
+
+// // Get message by ID
+// const getMessageById = async (messageId) => {
+//   const [rows] = await db.execute(
+//     `SELECT id, role, content, token_count, created_at
+//      FROM conversations
+//      WHERE id = ?
+//      LIMIT 1`,
+//     [messageId],
+//   );
+
+//   if (!rows[0]) return null;
+
+//   return {
+//     id: rows[0].id,
+//     role: rows[0].role,
+//     content: rows[0].content,
+//     tokenCount: Number(rows[0].token_count || 0),
+//     createdAt: rows[0].created_at,
+//   };
+// };
+
+// // Main service
+// export async function createConversationService(question) {
+//   try {
+//     if (!question || !question.trim()) {
+//       const error = new Error("Question is required");
+//       error.status = 400;
+//       throw error;
+//     }
+
+//     // 1. Grab history BEFORE we insert the current question
+//     const historyRows = await getRecentConversationRows(5);
+
+//     // 2. Save user message to database
+//     const [userInsertResult] = await db.execute(
+//       `INSERT INTO conversations (content, role)
+//        VALUES (?, ?)`,
+//       [question, "user"],
+//     );
+
+//     // 3. Get AI response using the history and current question
+//     const { text, totalTokens } = await generateAssistantAnswer({
+//       historyRows,
+//       question,
+//     });
+
+//     // 4. Save assistant response to database
+//     const [assistantInsertResult] = await db.execute(
+//       `INSERT INTO conversations (role, content, token_count)
+//        VALUES (?, ?, ?)`,
+//       ["assistant", text, totalTokens],
+//     );
+
+//     const userConversation = await getMessageById(userInsertResult.insertId);
+//     const assistantConversation = await getMessageById(
+//       assistantInsertResult.insertId,
+//     );
+
+//     return {
+//       userConversation,
+//       assistantConversation,
+//     };
+//   } catch (error) {
+//     console.error(" Service Error:", error);
+//     throw error;
+//   }
+// }
 
 // import db from "../../../../db/dbConfig.js";
 // import { GoogleGenerativeAI } from "@google/generative-ai";
