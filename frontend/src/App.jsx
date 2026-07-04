@@ -4,7 +4,8 @@ import Sidebar from "./components/Sidebar/Sidebar.jsx";
 import ChatHeader from "./components/ChatHeader/ChatHeader.jsx";
 import MessageList from "./components/MessageList/MessageList.jsx";
 import ChatInput from "./components/ChatInput/ChatInput.jsx";
-
+const API_BASE_URL =
+  `${import.meta.env.VITE_API_URL}/api` || "http://localhost:3888/api";
 function App() {
   const [conversations, setConversations] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
