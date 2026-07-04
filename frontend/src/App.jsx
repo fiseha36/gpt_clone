@@ -20,7 +20,7 @@ function App() {
   // Fetch all conversations
   const fetchConversations = async () => {
     try {
-      const { data } = await axios.get(`${API_BASE_URL}/chat/conversations`);
+      const { data } = await axios.get(`${API_BASE_URL}/chat/conversation`);
 
       if (data.success) {
         setConversations(data.data.conversations || []);
@@ -48,7 +48,7 @@ function App() {
     try {
       setIsLoading(true);
 
-      const { data } = await axios.post(`${API_BASE_URL}/chat/conversations`, {
+      const { data } = await axios.post(`${API_BASE_URL}/chat/conversation`, {
         question: cleanQuestion,
       });
 
