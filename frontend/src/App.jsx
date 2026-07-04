@@ -1,75 +1,83 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
+
 import Sidebar from "./components/Sidebar/Sidebar.jsx";
 import ChatHeader from "./components/ChatHeader/ChatHeader.jsx";
 import MessageList from "./components/MessageList/MessageList.jsx";
 import ChatInput from "./components/ChatInput/ChatInput.jsx";
-const API_BASE_URL =
-  `${import.meta.env.VITE_API_URL}/api` || "http://localhost:3888/api";
+
+// Backend URL
+const API_BASE_URL = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/api`
+  : "http://localhost:3777/api";
+
 function App() {
   const [conversations, setConversations] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+
   const lastMessageRef = useRef(null);
 
-  async function fetchConversations() {
+  // Fetch all conversations
+  const fetchConversations = async () => {
     try {
-      const { data } = await axios.get("API_BASE_URL/chat/conversation");
+      const { data } = await axios.get(`${API_BASE_URL}/chat/conversations`);
 
-      setConversations(data.data || []);
+      if (data.success) {
+        setConversations(data.data.conversations || []);
+      }
     } catch (error) {
-      console.log("Fetch error:", error.message);
+      console.error("Fetch error:", error.response?.data || error.message);
     }
-  }
+  };
 
-  async function handleSubmit(question) {
+  // Send message
+  const handleSubmit = async (question) => {
     if (!question?.trim()) return;
 
     const cleanQuestion = question.trim();
 
-    // 1. Optimistic UI (user message)
-    const userMessage = {
+    // Optimistic UI
+    const tempUserMessage = {
       id: Date.now(),
       role: "user",
       content: cleanQuestion,
     };
 
-    setConversations((prev) => [...prev, userMessage]);
+    setConversations((prev) => [...prev, tempUserMessage]);
 
     try {
       setIsLoading(true);
 
-      // 2. Send to backend
-      const { data } = await axios.post("API_BASE_URL/chat/conversation", {
+      const { data } = await axios.post(`${API_BASE_URL}/chat/conversations`, {
         question: cleanQuestion,
       });
 
-      const result = data?.data;
+      const result = data.data;
 
       if (!result) {
-        throw new Error("No response from server");
+        throw new Error("No response returned from backend.");
       }
 
-      // 3. AI message
-      const aiMessage = {
-        id: result.assistantConversation?.id || Date.now() + 1,
-        role: "assistant",
-        content: result.assistantConversation?.content || "No response from AI",
+      const savedUserMessage = {
+        id: result.userConversation?.id || tempUserMessage.id,
+        role: "user",
+        content: result.userConversation?.content || cleanQuestion,
       };
 
-      // 4. Replace last user message with DB version + add AI reply
+      const assistantMessage = {
+        id: result.assistantConversation?.id || Date.now() + 1,
+        role: "assistant",
+        content:
+          result.assistantConversation?.content || "No response from AI.",
+      };
+
       setConversations((prev) => {
-        const withoutTemp = prev.filter((m) => m.id !== userMessage.id);
+        const filtered = prev.filter((msg) => msg.id !== tempUserMessage.id);
 
-        const savedUserMessage = {
-          id: result.userConversation?.id || userMessage.id,
-          role: "user",
-          content: result.userConversation?.content || cleanQuestion,
-        };
-
-        return [...withoutTemp, savedUserMessage, aiMessage];
+        return [...filtered, savedUserMessage, assistantMessage];
       });
     } catch (error) {
-      console.log("Send error:", error.message);
+      console.error("Send error:", error.response?.data || error.message);
 
       setConversations((prev) => [
         ...prev,
@@ -82,7 +90,7 @@ function App() {
     } finally {
       setIsLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
     fetchConversations();
@@ -102,13 +110,16 @@ function App() {
   return (
     <div className="app">
       <Sidebar />
+
       <main className="chat">
         <ChatHeader />
+
         <MessageList
-          lastMessageRef={lastMessageRef}
-          isLoading={isLoading}
           conversations={conversations}
+          isLoading={isLoading}
+          lastMessageRef={lastMessageRef}
         />
+
         <ChatInput isLoading={isLoading} handleSubmit={handleSubmit} />
       </main>
     </div>
@@ -116,6 +127,138 @@ function App() {
 }
 
 export default App;
+
+// import { useState, useEffect, useRef } from "react";
+// import axios from "axios";
+// import Sidebar from "./components/Sidebar/Sidebar.jsx";
+// import ChatHeader from "./components/ChatHeader/ChatHeader.jsx";
+// import MessageList from "./components/MessageList/MessageList.jsx";
+// import ChatInput from "./components/ChatInput/ChatInput.jsx";
+// const API_BASE_URL =
+//   `${import.meta.env.VITE_API_URL}/api` || "http://localhost:3888/api";
+// function App() {
+//   const [conversations, setConversations] = useState([]);
+//   const [isLoading, setIsLoading] = useState(false);
+//   const lastMessageRef = useRef(null);
+
+//   // async function fetchConversations() {
+//   //   try {
+//   //     const { data } = await axios.get("API_BASE_URL/chat/conversation");
+
+//   //     setConversations(data.data || []);
+//   //   } catch (error) {
+//   //     console.log("Fetch error:", error.message);
+//   //   }
+//   // }
+//   const fetchConversations = async () => {
+//     try {
+//       const response = await axios.get(`${API_BASE_URL}/chat/conversations`);
+//       if (response.data.success) {
+//         setConversations(response.data.data.conversations);
+//       }
+//     } catch (error) {
+//       console.error("Error fetching conversations:", error);
+//     }
+//   };
+
+//   async function handleSubmit(question) {
+//     if (!question?.trim()) return;
+
+//     const cleanQuestion = question.trim();
+
+//     // 1. Optimistic UI (user message)
+//     const userMessage = {
+//       id: Date.now(),
+//       role: "user",
+//       content: cleanQuestion,
+//     };
+
+//     setConversations((prev) => [...prev, userMessage]);
+
+//     try {
+//       setIsLoading(true);
+
+//       // 2. Send to backend
+//       // const { data } = await axios.post("API_BASE_URL/chat/conversation", {
+//       //   question: cleanQuestion,
+//       // });
+//       const response = await axios.post(`${API_BASE_URL}/chat/conversations`, {
+//         question,
+//       });
+
+//       const result = data?.data;
+
+//       if (!result) {
+//         throw new Error("No response from server");
+//       }
+
+//       // 3. AI message
+//       const aiMessage = {
+//         id: result.assistantConversation?.id || Date.now() + 1,
+//         role: "assistant",
+//         content: result.assistantConversation?.content || "No response from AI",
+//       };
+
+//       // 4. Replace last user message with DB version + add AI reply
+//       setConversations((prev) => {
+//         const withoutTemp = prev.filter((m) => m.id !== userMessage.id);
+
+//         const savedUserMessage = {
+//           id: result.userConversation?.id || userMessage.id,
+//           role: "user",
+//           content: result.userConversation?.content || cleanQuestion,
+//         };
+
+//         return [...withoutTemp, savedUserMessage, aiMessage];
+//       });
+//     } catch (error) {
+//       console.log("Send error:", error.message);
+
+//       setConversations((prev) => [
+//         ...prev,
+//         {
+//           id: Date.now(),
+//           role: "assistant",
+//           content: "⚠️ Failed to get response from AI",
+//         },
+//       ]);
+//     } finally {
+//       setIsLoading(false);
+//     }
+//   }
+
+//   useEffect(() => {
+//     fetchConversations();
+//   }, []);
+
+//   useEffect(() => {
+//     const timer = setTimeout(() => {
+//       lastMessageRef.current?.scrollIntoView({
+//         behavior: "smooth",
+//         block: "end",
+//       });
+//     }, 50);
+
+//     return () => clearTimeout(timer);
+//   }, [conversations, isLoading]);
+
+//   return (
+//     <div className="app">
+//       <Sidebar />
+//       <main className="chat">
+//         <ChatHeader />
+//         <MessageList
+//           lastMessageRef={lastMessageRef}
+//           isLoading={isLoading}
+//           conversations={conversations}
+//         />
+//         <ChatInput isLoading={isLoading} handleSubmit={handleSubmit} />
+//       </main>
+//     </div>
+//   );
+// }
+
+// export default App;
 // import Sidebar from "./components/Sidebar/Sidebar.jsx";
 // import ChatHeader from "./components/ChatHeader/ChatHeader.jsx";
 // import MessageList from "./components/MessageList/MessageList.jsx";
